@@ -1,0 +1,7 @@
+/kubeconfig*
+*.log
+.env.*
+*.tfstate*
+.terraform*
+*.pid
+*/test/*

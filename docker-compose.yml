@@ -1,0 +1,99 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: chatdb
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d chatdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Ollama AI Service (optional - use --profile ai to enable)
+  ollama:
+    image: ollama/ollama:0.11.11
+    profiles: ["ai"]
+    environment:
+      OLLAMA_NEW_ESTIMATES: "1"
+      OLLAMA_NUM_PARALLEL: "2"
+      OLLAMA_MAX_LOADED_MODELS: "2"
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+
+  # Model Loader (pulls tinyllama model on startup)
+  model-loader:
+    image: curlimages/curl:latest
+    profiles: ["ai"]
+    depends_on:
+      - ollama
+    environment:
+      MODEL_NAME: tinyllama
+    command:
+      - /bin/sh
+      - -c
+      - |
+        echo '🔄 Waiting for ollama service to be ready...'
+        until curl -f http://ollama:11434/api/tags >/dev/null 2>&1; do
+          echo '⏳ Ollama not ready yet, waiting...'
+          sleep 5
+        done
+        echo '✅ Ollama service is ready!'
+        echo '🔍 Checking if model $${MODEL_NAME} is already available...'
+        if curl -s http://ollama:11434/api/tags | grep -q "$${MODEL_NAME}"; then
+          echo '🟢 Model $${MODEL_NAME} is already available'
+        else
+          echo '📥 Pulling model $${MODEL_NAME} via API...'
+          curl -X POST http://ollama:11434/api/pull -H 'Content-Type: application/json' -d "{\"name\": \"$${MODEL_NAME}\"}" --no-buffer --show-error
+          echo '✅ Model $${MODEL_NAME} pull initiated!'
+        fi
+        echo '✅ Model loading complete! Keeping container alive...'
+        tail -f /dev/null
+
+  # Backend Service
+  backend:
+    build:
+      context: ./backend
+      args:
+        VERSION: dev
+        GIT_COMMIT: local
+        BUILD_DATE: ${BUILD_DATE:-2025-01-01T00:00:00Z}
+    environment:
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_ENABLED: ${OLLAMA_ENABLED:-false}
+      DATABASE_URL: postgres://admin:password@postgres:5432/chatdb
+      CHAT_TITLE: "AI Chat"
+      PORT: "8080"
+      REGION: "dev"
+      ROLE: "development"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Frontend Service (Vite dev server for fast inner loop)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+    depends_on:
+      - backend
+
+volumes:
+  postgres-data:
+  ollama-data:
