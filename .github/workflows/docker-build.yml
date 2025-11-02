@@ -40,7 +40,7 @@ jobs:
       - name: Build and Push Docker Images
         run: |
           # List of directories containing Dockerfiles
-          SERVICES="frontend backend simple"
+          SERVICES="frontend backend"
           for SERVICE in $SERVICES; do
             IMAGE_NAME=ghcr.io/${{ github.repository }}/${SERVICE}
             VERSION=${{ steps.version.outputs.version }}
