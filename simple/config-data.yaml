@@ -73,7 +73,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: ghcr.io/confighub/cubbychat/backend:latest
+        image: ghcr.io/confighub/cubbychat/backend:1.1.7
         ports:
         - containerPort: 8080
         env:
@@ -127,7 +127,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: ghcr.io/confighub/cubbychat/frontend:latest
+        image: ghcr.io/confighub/cubbychat/frontend:1.1.7
         ports:
         - containerPort: 80
         resources:
