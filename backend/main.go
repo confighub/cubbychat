@@ -530,15 +530,15 @@ func checkModelReady() {
 }
 
 func main() {
-	// Get environment variables
-	ollamaURL = os.Getenv("OLLAMA_URL")
-	if ollamaURL == "" {
-		log.Fatal("OLLAMA_URL environment variable not set")
-	}
-
 	// Check if Ollama is enabled (defaults to true for backwards compatibility)
 	ollamaEnabledStr := os.Getenv("OLLAMA_ENABLED")
 	ollamaEnabled = ollamaEnabledStr != "false"
+
+	// Get Ollama URL (only required when Ollama is enabled)
+	ollamaURL = os.Getenv("OLLAMA_URL")
+	if ollamaEnabled && ollamaURL == "" {
+		log.Fatal("OLLAMA_URL environment variable not set")
+	}
 
 	if ollamaEnabled {
 		log.Printf("Using Ollama service with dynamic model detection")
