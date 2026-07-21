@@ -1,0 +1,47 @@
+name: publish-package
+
+# Publishes the installer package at ./installer to
+# ghcr.io/<owner>/packages/<name>:<version> (+ latest tag) as a native
+# installer OCI artifact, where <name> and <version> come from
+# installer/installer.yaml.
+#
+# The installer CLI is built from source (github.com/confighub/installer
+# has no binary releases yet).
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout installer CLI source
+        uses: actions/checkout@v4
+        with:
+          repository: confighub/installer
+          path: .installer-src
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+          cache-dependency-path: .installer-src/go.sum
+      - name: Build installer CLI
+        run: make -C .installer-src build
+      - name: Login to ghcr.io
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            .installer-src/bin/installer login ghcr.io --username "${{ github.actor }}" --password-stdin
+      - name: Push package
+        run: |
+          name=$(awk '/^metadata:/{m=1;next} m&&/^[^ ]/{m=0} m&&/name:/{print $2;exit}' installer/installer.yaml)
+          version=$(awk '/^installerMetadata:/{m=1;next} m&&/^[^ ]/{m=0} m&&/version:/{print $2;exit}' installer/installer.yaml)
+          test -n "$name" -a -n "$version" || { echo "cannot read name/version from installer/installer.yaml"; exit 1; }
+          ref="oci://ghcr.io/${{ github.repository_owner }}/packages/$name:$version"
+          echo "pushing $ref"
+          .installer-src/bin/installer push installer "$ref"
+          .installer-src/bin/installer tag "$ref" latest

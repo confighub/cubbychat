@@ -1,0 +1,41 @@
+apiVersion: installer.confighub.com/v1alpha1
+kind: Package
+metadata:
+  name: cubbychat
+installerMetadata:
+  version: 0.1.0
+spec:
+  bases:
+    - name: default
+      path: bases/default
+      default: true
+      description: >-
+        Cubby Chat in non-AI mode — frontend, backend, and a bundled
+        PostgreSQL StatefulSet. Loads fast, small footprint.
+
+  components:
+    - name: ai
+      path: components/ai
+      description: >-
+        Adds an Ollama deployment (tinyllama) and flips the backend into
+        AI mode (OLLAMA_ENABLED=true). The backend gracefully shows
+        "AI is on vacation" messages until the model finishes loading.
+
+  transformers:
+    # Rename the Namespace resource and set metadata.namespace on every
+    # namespace-scoped resource. The namespace comes from the wizard's
+    # --namespace flag.
+    - toolchain: Kubernetes/YAML
+      whereResource: ""
+      description: Set the namespace on every namespaced resource.
+      invocations:
+        - name: set-namespace
+          args: ["{{ .Namespace }}"]
+
+  validators:
+    - toolchain: Kubernetes/YAML
+      description: Default validators applied at the end of every render.
+      invocations:
+        - name: vet-schemas
+        - name: vet-merge-keys
+        - name: vet-format
