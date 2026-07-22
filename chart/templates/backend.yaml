@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: backend
+spec:
+  replicas: {{ .Values.backend.replicas }}
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          ports:
+            - containerPort: 8080
+          env:
+            - name: OLLAMA_URL
+              value: "http://ollama:11434"
+            - name: OLLAMA_ENABLED
+              value: {{ .Values.ai.enabled | quote }}
+            - name: DATABASE_URL
+              value: "postgres://{{ .Values.postgres.user }}:{{ .Values.postgres.password }}@postgres:5432/{{ .Values.postgres.database }}"
+            - name: CHAT_TITLE
+              value: {{ .Values.backend.chatTitle | quote }}
+            - name: PORT
+              value: "8080"
+            - name: REGION
+              value: {{ .Values.backend.region | quote }}
+            - name: ROLE
+              value: {{ .Values.backend.role | quote }}
+          resources:
+            requests:
+              memory: "100Mi"
+            limits:
+              memory: "200Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: backend
+spec:
+  selector:
+    app: backend
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP

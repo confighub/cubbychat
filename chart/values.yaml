@@ -1,0 +1,34 @@
+backend:
+  image:
+    repository: ghcr.io/confighub/cubbychat/backend
+    tag: 1.1.7
+  replicas: 1
+  chatTitle: Cubby Chat
+  region: dev
+  role: development
+
+frontend:
+  image:
+    repository: ghcr.io/confighub/cubbychat/frontend
+    tag: 1.1.7
+  replicas: 1
+
+postgres:
+  image:
+    repository: postgres
+    tag: "16"
+  database: chatdb
+  user: admin
+  password: password
+  storage: 5Gi
+
+# AI mode: adds the Ollama deployment and flips the backend's
+# OLLAMA_ENABLED. The backend gracefully shows "AI is on vacation"
+# messages until the model finishes loading.
+ai:
+  enabled: false
+  ollama:
+    image:
+      repository: ollama/ollama
+      tag: 0.11.11
+    model: tinyllama

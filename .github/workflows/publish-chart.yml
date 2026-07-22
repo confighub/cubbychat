@@ -1,0 +1,33 @@
+name: publish-chart
+
+# Packages ./chart and pushes it to ghcr.io/<owner>/charts/<name>:<version>
+# following Helm OCI conventions (helm package + helm push). The chart
+# name and version come from chart/Chart.yaml.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint chart
+        run: |
+          helm lint chart
+          helm template cubbychat chart --namespace lintcheck >/dev/null
+          helm template cubbychat chart --namespace lintcheck --set ai.enabled=true >/dev/null
+      - name: Login to ghcr.io
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+      - name: Package and push
+        run: |
+          helm package chart
+          tgz=$(ls cubbychat-*.tgz)
+          echo "pushing $tgz"
+          helm push "$tgz" "oci://ghcr.io/${{ github.repository_owner }}/charts"
