@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: postgres
-  namespace: {{ .Release.Namespace }}
+  namespace: confighubplaceholder
   labels:
     app: postgres
 spec:
@@ -18,14 +18,14 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
+          image: "postgres:16"
           env:
             - name: POSTGRES_DB
-              value: {{ .Values.postgres.database | quote }}
+              value: "chatdb"
             - name: POSTGRES_USER
-              value: {{ .Values.postgres.user | quote }}
+              value: "admin"
             - name: POSTGRES_PASSWORD
-              value: {{ .Values.postgres.password | quote }}
+              value: "password"
           ports:
             - containerPort: 5432
           volumeMounts:
@@ -38,8 +38,8 @@ spec:
               memory: "200Mi"
   volumeClaimTemplates:
     # apiVersion/kind/volumeMode are populated by the API server on the live
-    # PVC template; declaring them here keeps the rendered manifest equal to
-    # the cluster so ArgoCD doesn't report the (immutable) StatefulSet OutOfSync.
+    # PVC template; declaring them here keeps the manifest equal to the cluster
+    # so ArgoCD doesn't report the (immutable) StatefulSet OutOfSync.
     - apiVersion: v1
       kind: PersistentVolumeClaim
       metadata:
@@ -48,14 +48,14 @@ spec:
         accessModes: ["ReadWriteOnce"]
         resources:
           requests:
-            storage: {{ .Values.postgres.storage }}
+            storage: 5Gi
         volumeMode: Filesystem
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: postgres
-  namespace: {{ .Release.Namespace }}
+  namespace: confighubplaceholder
   labels:
     app: postgres
 spec:

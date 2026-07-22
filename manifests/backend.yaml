@@ -2,11 +2,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: backend
-  namespace: {{ .Release.Namespace }}
+  namespace: confighubplaceholder
   labels:
     app: backend
 spec:
-  replicas: {{ .Values.backend.replicas }}
+  replicas: 1
   selector:
     matchLabels:
       app: backend
@@ -17,24 +17,24 @@ spec:
     spec:
       containers:
         - name: backend
-          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          image: "ghcr.io/confighub/cubbychat/backend:1.1.7"
           ports:
             - containerPort: 8080
           env:
             - name: OLLAMA_URL
               value: "http://ollama:11434"
             - name: OLLAMA_ENABLED
-              value: {{ .Values.ai.enabled | quote }}
+              value: "true"
             - name: DATABASE_URL
-              value: "postgres://{{ .Values.postgres.user }}:{{ .Values.postgres.password }}@postgres:5432/{{ .Values.postgres.database }}"
+              value: "postgres://admin:password@postgres:5432/chatdb"
             - name: CHAT_TITLE
-              value: {{ .Values.backend.chatTitle | quote }}
+              value: "Cubby Chat"
             - name: PORT
               value: "8080"
             - name: REGION
-              value: {{ .Values.backend.region | quote }}
+              value: "dev"
             - name: ROLE
-              value: {{ .Values.backend.role | quote }}
+              value: "development"
           resources:
             requests:
               memory: "100Mi"
@@ -45,7 +45,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: backend
-  namespace: {{ .Release.Namespace }}
+  namespace: confighubplaceholder
   labels:
     app: backend
 spec:

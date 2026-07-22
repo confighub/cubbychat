@@ -1,0 +1,46 @@
+name: publish-config-bundle
+
+# Packages ./manifests into a plain OCI manifest bundle and pushes it to
+# ghcr.io/<owner>/configs/<name>. The bundle is a standard OCI image artifact
+# with a single tar+gzip layer of the literal Kubernetes YAML — the same shape
+# a GitOps operator (Flux OCIRepository, Argo CD) consumes. Install it into
+# ConfigHub with:
+#
+#   cub variant upload --component cubbychat --variant base --granularity per-file \
+#     oci://ghcr.io/confighub/configs/cubbychat
+
+on:
+  push:
+    branches: [main]
+    paths: ['manifests/**']
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  BUNDLE: ghcr.io/${{ github.repository_owner }}/configs/cubbychat
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install oras
+        uses: oras-project/setup-oras@v1
+
+      - name: Log in to ghcr.io
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            oras login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Package and push bundle
+        run: |
+          tar -czf bundle.tar.gz -C manifests .
+          oras push \
+            "$BUNDLE:latest" \
+            --artifact-type application/vnd.confighub.config.bundle.v1 \
+            bundle.tar.gz:application/vnd.oci.image.layer.v1.tar+gzip
+          echo "Pushed $BUNDLE:latest"

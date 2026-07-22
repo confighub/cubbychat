@@ -1,9 +1,8 @@
-{{- if .Values.ai.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ollama
-  namespace: {{ .Release.Namespace }}
+  namespace: confighubplaceholder
   labels:
     app: ollama
 spec:
@@ -18,7 +17,7 @@ spec:
     spec:
       containers:
         - name: ollama
-          image: "{{ .Values.ai.ollama.image.repository }}:{{ .Values.ai.ollama.image.tag }}"
+          image: "ollama/ollama:0.11.11"
           ports:
             - containerPort: 11434
           env:
@@ -35,7 +34,7 @@ spec:
           image: curlimages/curl:8.11.1
           env:
             - name: MODEL_NAME
-              value: {{ .Values.ai.ollama.model | quote }}
+              value: "tinyllama"
           command: ["/bin/sh", "-c"]
           args:
             - |
@@ -73,7 +72,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: ollama
-  namespace: {{ .Release.Namespace }}
+  namespace: confighubplaceholder
   labels:
     app: ollama
 spec:
@@ -84,4 +83,3 @@ spec:
       port: 11434
       targetPort: 11434
   type: ClusterIP
-{{- end }}
