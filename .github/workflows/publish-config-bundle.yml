@@ -1,18 +1,22 @@
 name: publish-config-bundle
 
-# Packages ./manifests into a plain OCI manifest bundle and pushes it to
-# ghcr.io/<owner>/configs/<name>. The bundle is a standard OCI image artifact
-# with a single tar+gzip layer of the literal Kubernetes YAML — the same shape
-# a GitOps operator (Flux OCIRepository, Argo CD) consumes. Install it into
-# ConfigHub with:
+# Packages the manifests into plain OCI manifest bundles and pushes them to
+# ghcr.io/<owner>/configs/. Each bundle is a standard OCI image artifact with a
+# single tar+gzip layer of literal Kubernetes YAML — the shape a GitOps operator
+# (Flux OCIRepository, Argo CD) consumes.
 #
+# Two bundles are produced from one source:
+#   cubbychat         the default app, AI off (no Ollama, OLLAMA_ENABLED=false)
+#   cubbychat-ollama  adds the Ollama deployment and enables it in the backend
+#
+# Install a bundle into ConfigHub as a component base:
 #   cub variant upload --component cubbychat --variant base --granularity per-file \
 #     oci://ghcr.io/confighub/configs/cubbychat
 
 on:
   push:
     branches: [main]
-    paths: ['manifests/**']
+    paths: ['manifests/**', 'ai/**']
   workflow_dispatch: {}
 
 permissions:
@@ -20,7 +24,7 @@ permissions:
   packages: write
 
 env:
-  BUNDLE: ghcr.io/${{ github.repository_owner }}/configs/cubbychat
+  REGISTRY: ghcr.io/${{ github.repository_owner }}/configs
 
 jobs:
   publish:
@@ -31,16 +35,34 @@ jobs:
       - name: Install oras
         uses: oras-project/setup-oras@v1
 
+      - name: Install yq
+        uses: mikefarah/yq@v4
+
       - name: Log in to ghcr.io
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | \
             oras login ghcr.io --username "${{ github.actor }}" --password-stdin
 
-      - name: Package and push bundle
+      - name: Build bundle contents
         run: |
-          tar -czf bundle.tar.gz -C manifests .
-          oras push \
-            "$BUNDLE:latest" \
-            --artifact-type application/vnd.confighub.config.bundle.v1 \
-            bundle.tar.gz:application/vnd.oci.image.layer.v1.tar+gzip
-          echo "Pushed $BUNDLE:latest"
+          # cubbychat: the manifests as-is (AI off).
+          mkdir -p out/cubbychat
+          cp manifests/*.yaml out/cubbychat/
+
+          # cubbychat-ollama: the same, plus Ollama, with the backend's
+          # OLLAMA_ENABLED flipped to "true" (only the Deployment doc is touched).
+          mkdir -p out/cubbychat-ollama
+          cp manifests/*.yaml ai/ollama.yaml out/cubbychat-ollama/
+          yq -i '(select(.kind == "Deployment") | .spec.template.spec.containers[].env[] | select(.name == "OLLAMA_ENABLED") | .value) = "true"' \
+            out/cubbychat-ollama/backend.yaml
+
+      - name: Package and push bundles
+        run: |
+          for name in cubbychat cubbychat-ollama; do
+            tar -czf "$name.tar.gz" -C "out/$name" .
+            oras push \
+              "$REGISTRY/$name:latest" \
+              --artifact-type application/vnd.confighub.config.bundle.v1 \
+              "$name.tar.gz:application/vnd.oci.image.layer.v1.tar+gzip"
+            echo "Pushed $REGISTRY/$name:latest"
+          done
