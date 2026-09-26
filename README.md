@@ -21,7 +21,9 @@ To run with AI, use this:
 
 ## Run with ConfigHub
 
-This app was created to help demonstrate ConfigHub. Follow [this example](https://github.com/confighub/examples/tree/main/global-app) to see how you can manage a global deployment footprint of Cubby Chat with ConfigHub.
+This app was created to help demonstrate ConfigHub. Follow [this example](https://github.com/confighub/examples/tree/main/global-app-layer/realistic-app) to see how you can manage a global deployment footprint of Cubby Chat with ConfigHub.
+
+The example manages the app's three core components—frontend, backend, and PostgreSQL—while optional Ollama AI remains configured in this application repository.
 
 ## Notes
 
